@@ -5,7 +5,7 @@
 #define STEPS 16
 #define ROWS 8
 #define PATTERNS 4
-#define BARS 16
+#define BARS 8
 #define ON 127
 #define OFF 0
 #define PPQN 24
@@ -34,6 +34,8 @@ void sendAllNotesOff() {
 
 void setup() {
   Serial.begin(9600);
+  randomSeed(micros());
+
   tracks[0] = { 36, {
     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
@@ -163,8 +165,10 @@ void loop() {
         // Increase bar count
         if (bar >= BARS) {
           bar = 0;
+
           // Send all notes off
           sendAllNotesOff();
+          
           lane = random(0, 4);
           pattern = random(0, 8);
           MIDI.sendProgramChange(random(0, 64), 1);
