@@ -92,9 +92,13 @@ void setup() {
   sendAllNotesOff();
 
   // Initialize synthesizers
-  MIDI.sendProgramChange(2, 1);
-  MIDI.sendProgramChange(2, 2);
-  MIDI.sendProgramChange(2, 3);
+  MIDI.sendProgramChange(random(0, 64), 1);
+  MIDI.sendProgramChange(random(0, 64), 2);
+  MIDI.sendProgramChange(random(0, 64), 3);
+
+  // MIDI.sendProgramChange(2, 1);
+  // MIDI.sendProgramChange(2, 2);
+  // MIDI.sendProgramChange(2, 3);
 
   // Initialize MIDI Clock
   byte tick = 0;
@@ -147,11 +151,11 @@ void loop() {
       for (byte ch = 1; ch < 2; ch++) {
         if (tracks[lane].patterns[pattern][step]) {    
           MIDI.sendNoteOn(tracks[lane].note, ON, ch);
-          MIDI.sendNoteOn(tracks[lane].note, ON, ch + 1);
+          MIDI.sendNoteOn(tracks[lane].note + 12, ON, ch + 1);
           MIDI.sendNoteOn(tracks[lane].note, ON, ch + 2);
         } else {
           MIDI.sendNoteOff(tracks[lane].note, OFF, ch);
-          MIDI.sendNoteOff(tracks[lane].note, OFF, ch + 1);
+          MIDI.sendNoteOff(tracks[lane].note + 12, OFF, ch + 1);
           MIDI.sendNoteOff(tracks[lane].note, OFF, ch + 2);
         }
       }
@@ -171,9 +175,15 @@ void loop() {
           
           lane = random(0, 4);
           pattern = random(0, 8);
-          MIDI.sendProgramChange(random(0, 64), 1);
-          MIDI.sendProgramChange(random(0, 64), 2);
-          MIDI.sendProgramChange(random(0, 64), 3);
+          if (random(0, 2)) {
+            MIDI.sendProgramChange(random(0, 127), 1);
+          }
+          if (random(0, 2)) {
+            MIDI.sendProgramChange(random(0, 127), 2);
+          }
+          if (random(0, 2)) {
+            MIDI.sendProgramChange(random(0, 127), 3);
+          }
         }
       }
     }
