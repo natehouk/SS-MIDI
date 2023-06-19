@@ -137,7 +137,7 @@ void loop() {
   // and 24 is the number of pulses per quarter note required for the MIDI Clock
   if (now - previous > ONE_SECOND / bpm / PPQN) {
     
-    // TODO: handle micors() overflow gracefully so timing stays consistent
+    // TODO: handle micros() overflow gracefully so timing stays consistent
 
     // Reset previous
     previous = now;
