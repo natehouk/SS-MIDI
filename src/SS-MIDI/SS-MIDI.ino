@@ -34,7 +34,7 @@ void sendAllNotesOff() {
 
 void setup() {
   Serial.begin(9600);
-  randomSeed(micros());
+  randomSeed(analogRead(0));
 
   tracks[0] = { 36, {
     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
