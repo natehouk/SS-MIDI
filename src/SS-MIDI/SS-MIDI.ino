@@ -24,6 +24,14 @@ byte bpm = 123;
 int measure = 0;
 unsigned long previous = 0;
 
+void sendAllNotesOff() {
+  // Send all notes off
+  for (int i = 1; i <= 16; i++) {
+    MIDI.sendControlChange(123, 0, i);
+    // exit(0);
+  }
+}
+
 void setup() {
   Serial.begin(9600);
   tracks[0] = { 36, {
@@ -77,12 +85,9 @@ void setup() {
 
   // Listen to all incoming messages
   MIDI.begin(MIDI_CHANNEL_OMNI);  
-  
+
   // Send all notes off
-  for (int i = 1; i <= 16; i++) {
-    MIDI.sendControlChange(123, 0, i);
-    // exit(0);
-  }
+  sendAllNotesOff();
 
   // Initialize synthesizers
   MIDI.sendProgramChange(2, 1);
@@ -154,15 +159,17 @@ void loop() {
       if (step >= STEPS) {
         step = 0;
         bar++;
-        pattern = random(0, 8);
-        lane = random(0, 4);
 
         // Increase bar count
         if (bar >= BARS) {
           bar = 0;
-          MIDI.sendProgramChange(random(0, 7), 1);
-          MIDI.sendProgramChange(random(0, 7), 2);
-          MIDI.sendProgramChange(random(0, 7), 3);
+          // Send all notes off
+          sendAllNotesOff();
+          lane = random(0, 4);
+          pattern = random(0, 8);
+          MIDI.sendProgramChange(random(0, 64), 1);
+          MIDI.sendProgramChange(random(0, 64), 2);
+          MIDI.sendProgramChange(random(0, 64), 3);
         }
       }
     }
