@@ -92,9 +92,9 @@ void setup() {
   sendAllNotesOff();
 
   // Initialize synthesizers
-  MIDI.sendProgramChange(random(0, 64), 1);
-  MIDI.sendProgramChange(random(0, 64), 2);
-  MIDI.sendProgramChange(random(0, 64), 3);
+  MIDI.sendProgramChange(random(0, 127), 1);
+  MIDI.sendProgramChange(random(0, 127), 2);
+  MIDI.sendProgramChange(random(0, 127), 3);
 
   // MIDI.sendProgramChange(2, 1);
   // MIDI.sendProgramChange(2, 2);
