@@ -3,7 +3,7 @@
 #include <MIDI.h>
 #include <Fsm.h>
 
-#define DEBUG true
+#define DEBUG false
 #define STEPS 16
 #define ROWS 8
 #define PATTERNS 4
@@ -34,6 +34,7 @@ State running(&onRunningEnter, &onRunningState, &onRunningExit);
 Fsm sequencer(&stopped);
 
 const int ledPin = LED_BUILTIN;
+const int buttonPin = 7;
 int ledState = LOW;
 
 // Use volatile for shared variables
@@ -107,7 +108,7 @@ void onRunningEnter() {
 void onRunningState() {
   log("onRunningState()");
   sendClock(RUNNING);
-  playPattern();
+  playStep();
 }
 
 void onRunningExit() {
@@ -144,8 +145,14 @@ void sendClock(Mode mode) {
 void pulse() {
   log("pulse()");
 
-  // Advance finite state machine
-  sequencer.run_machine();
+  if (!random(0, 10)) {
+    log("Button pressed");
+    sequencer.trigger(PLAY);
+  } else {
+    log("Button not pressed");
+    // Advance finite state machine
+    sequencer.run_machine();
+  }
 }
 
 void blinkLED() {
@@ -170,13 +177,15 @@ void sendAllNotesOff() {
   }
 }
 
-void playPattern() {
-  for (byte track = 0; track < 8; track++) {
+void playStep() {
+  for (byte track = 0; track < 1; track++) {
     byte pattern = tracks[track].pattern;
     int channel = tracks[track].channel;
     if (tracks[track].patterns[pattern][step]) {
+      log("sendNoteOn()");
       MIDI.sendNoteOn(tracks[track].note, ON, channel);
     } else {
+      log("sendNoteOff()");
       MIDI.sendNoteOff(tracks[track].note, OFF, channel);
     }
   }
@@ -187,6 +196,7 @@ void setup() {
   Serial.println("setup()");
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
+  pinMode(buttonPin, INPUT);
   digitalWrite(ledPin, HIGH);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
   sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
@@ -206,49 +216,49 @@ void setup() {
   MIDI.sendProgramChange(2, 3);
 
   // Initialize patterns
-  tracks[0] = { 36, 1, 1, {
+  tracks[0] = { 36, 1, 0, {
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                     } };
-  tracks[1] = { 40, 1, 1, {
+  tracks[1] = { 40, 2, 0, {
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                     } };
-  tracks[2] = { 42, 1, 1, {
+  tracks[2] = { 42, 3, 0, {
                       { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
                       { 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1 },
                       { 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1 },
                       { 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1 },
                     } };
-  tracks[3] = { 51, 1, 1, {
+  tracks[3] = { 51, 4, 0, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0 },
                     } };
-  tracks[4] = { 37, 1, 1, {
+  tracks[4] = { 37, 5, 0, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[5] = { 38, 1, 1, {
+  tracks[5] = { 38, 6, 0, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[6] = { 75, 1, 1, {
+  tracks[6] = { 75, 7, 0, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[7] = { 76, 1, 1, {
+  tracks[7] = { 76, 8, 0, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
                       { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
@@ -260,4 +270,5 @@ void setup() {
 }
 
 void loop() {
+
 }
