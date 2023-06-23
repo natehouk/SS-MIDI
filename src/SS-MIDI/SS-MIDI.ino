@@ -41,8 +41,8 @@ void sendAllNotesOff() {
   }
 }
 
-State stopped(onStopEnter, NULL, &onStopExit);
-State running(onRunEnter, &onRunState, &onRunExit);
+State stopped(&onStopEnter, &onStopState, &onStopExit);
+State running(&onRunEnter, &onRunState, &onRunExit);
 Fsm seq(&stopped);
 
 void onRunEnter() {
@@ -51,6 +51,7 @@ void onRunEnter() {
 void onRunState() {
   Serial.println("onRunState()");
   blinkLED();
+  MIDI.sendClock();
 }
 void onRunExit() {
   Serial.println("onRunExit()");
@@ -67,8 +68,13 @@ void onStopEnter() {
 void onStopExit() {
   Serial.println("onStopExit()");
 }
+void onStopState() {
+  Serial.println("onStopState()");
+  MIDI.sendClock();
+}
 void onStopRunTransition() {
   Serial.println("onStopRunTransition()");
+  MIDI.sendStart();
 }
 
 int c = 0;
@@ -88,6 +94,17 @@ void setup() {
   seq.add_transition(&stopped, &running, PLAY, &onStopRunTransition);
   seq.add_transition(&running, &running, TICK, &onRunRunTransition);
 
+  // Listen to all incoming messages
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+
+  // Send all notes off
+  sendAllNotesOff();
+
+  // Initialize synthesizers
+  MIDI.sendProgramChange(2, 1);
+  MIDI.sendProgramChange(2, 2);
+  MIDI.sendProgramChange(2, 3);
+  
   // tracks[0] = { 36, {
   //                     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
   //                     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
@@ -137,20 +154,11 @@ void setup() {
   //                     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
   //                   } };
 
-  // // Listen to all incoming messages
-  // MIDI.begin(MIDI_CHANNEL_OMNI);
 
-  // // Send all notes off
-  // sendAllNotesOff();
 
-  // // Initialize synthesizers
-  // MIDI.sendProgramChange(random(0, 127), 1);
-  // MIDI.sendProgramChange(random(0, 127), 2);
-  // MIDI.sendProgramChange(random(0, 127), 3);
 
-  // MIDI.sendProgramChange(2, 1);
-  // MIDI.sendProgramChange(2, 2);
-  // MIDI.sendProgramChange(2, 3);
+
+
 
   // Initialize MIDI Clock
   // byte tick = 0;
@@ -163,7 +171,7 @@ void setup() {
   //   if (now - previous > ONE_SECOND / bpm / PPQN) {
   //     Serial.println(now - previous);
   //     previous = now;
-  //     MIDI.sendClock();
+  //     
   //     tick++;
   //   }
   // }
@@ -172,8 +180,7 @@ void setup() {
   // previous = 0;
 
   // // Start playhead
-  // MIDI.sendStart();
-  
+  // 
   clk.begin(pulse, 20000);
 }
 
@@ -196,7 +203,6 @@ void blinkLED() {
 
 int phrase = 0;
 int bar = 0;
-// int pulse = 0;
 byte step = 0;
 byte pattern = 0;
 byte lane = 0;
