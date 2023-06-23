@@ -21,7 +21,8 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 IntervalTimer clk;
 
 // Finite state machine
-enum event { PLAY, PAUSE, STOP, TICK };
+enum Event { PLAY, PAUSE, STOP };
+enum Mode { RUNNING, PAUSED, STOPPED };
 State stopped(&onStopEnter, &onStopState, &onStopExit);
 State running(&onRunEnter, &onRunState, &onRunExit);
 Fsm sequencer(&stopped);
@@ -55,7 +56,7 @@ void onRunEnter() {
 
 void onRunState() {
   log("onRunState()");
-  sendClock();
+  sendClock(RUNNING);
 }
 
 void onRunExit() {
@@ -76,7 +77,7 @@ void onStopExit() {
 
 void onStopState() {
   log("onStopState()");
-  sendClock();
+  sendClock(STOPPED);
 }
 
 void onStopRunTransition() {
@@ -87,12 +88,21 @@ void sendStart() {
   MIDI.sendStart();
 }
 
-void sendClock() {
+void sendClock(Mode mode) {
   log("sendClock()");
-  pulses++;
-  if (pulses % PPQN == 0) {
-    pulses = 0;
-    blinkLED();
+  switch(mode) {
+    case RUNNING:
+      pulses++;
+      if (pulses % PPQN == 0) {
+        pulses = 0;
+        blinkLED();
+      }
+      break;
+    case PAUSED:
+      break;
+    case STOPPED:
+      pulses = 0;
+      break;
   }
   MIDI.sendClock();
 }
@@ -133,7 +143,6 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
   sequencer.add_transition(&stopped, &running, PLAY, &onStopRunTransition);
-  sequencer.add_transition(&running, &running, TICK, &onRunRunTransition);
 
   // Listen to all incoming messages
   MIDI.begin(MIDI_CHANNEL_OMNI);
