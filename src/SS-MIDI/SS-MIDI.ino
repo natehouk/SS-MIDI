@@ -3,6 +3,7 @@
 #include <MIDI.h>
 #include <Fsm.h>
 
+#define DEBUG true
 #define STEPS 16
 #define ROWS 8
 #define PATTERNS 4
@@ -42,38 +43,44 @@ struct track {
 };
 track tracks[ROWS];
 
+void log(String message) {
+  if (DEBUG) {
+    Serial.println(message);
+  }
+}
+
 void onRunEnter() {
-  Serial.println("onRunEnter()");
+  log("onRunEnter()");
 }
 
 void onRunState() {
-  Serial.println("onRunState()");
+  log("onRunState()");
   sendClock();
 }
 
 void onRunExit() {
-  Serial.println("onRunExit()");
+  log("onRunExit()");
 }
 
 void onRunRunTransition() {
-  Serial.println("onRunRunTransition()");
+  log("onRunRunTransition()");
 }
 
 void onStopEnter() {
-  Serial.println("onStopEnter()");
+  log("onStopEnter()");
 }
 
 void onStopExit() {
-  Serial.println("onStopExit()");
+  log("onStopExit()");
 }
 
 void onStopState() {
-  Serial.println("onStopState()");
+  log("onStopState()");
   sendClock();
 }
 
 void onStopRunTransition() {
-  Serial.println("onStopRunTransition()");
+  log("onStopRunTransition()");
 }
 
 void sendStart() {
@@ -81,7 +88,7 @@ void sendStart() {
 }
 
 void sendClock() {
-  Serial.println("sendClock()");
+  log("sendClock()");
   pulses++;
   if (pulses % PPQN == 0) {
     pulses = 0;
@@ -91,11 +98,16 @@ void sendClock() {
 }
 
 void pulse() {
+  log("pulse()");
+
+  // Advance finite state machine
   sequencer.run_machine();
-  sequencer.trigger(TICK);
 }
 
 void blinkLED() {
+  log("blindLED()");
+
+  // Blind LED
   if (ledState == LOW) {
     ledState = HIGH;
     blinks++; // Increase when LED turns on
@@ -106,7 +118,9 @@ void blinkLED() {
 }
 
 void sendAllNotesOff() {
-  // Send all notes off
+  log("sendAllNotesOff()");
+
+  // Send all notes off to all channels
   for (int i = 1; i <= 16; i++) {
     MIDI.sendControlChange(123, 0, i);
   }
