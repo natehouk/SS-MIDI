@@ -41,39 +41,40 @@ void sendAllNotesOff() {
   }
 }
 
-State state_stop(on_stop_enter, NULL, &on_stop_exit);
-State state_play(on_play_enter, &on_play_state, &on_play_exit);
-Fsm fsm(&state_stop);
+State stopped(onStopEnter, NULL, &onStopExit);
+State running(onRunEnter, &onRunState, &onRunExit);
+Fsm seq(&stopped);
 
-void on_play_enter() {
-  Serial.println("on_play_enter()");
+void onRunEnter() {
+  Serial.println("onRunEnter()");
 }
-void on_play_state() {
-  Serial.println("on_play_state()");
+void onRunState() {
+  Serial.println("onRunState()");
   blinkLED();
 }
-void on_play_exit() {
-  Serial.println("on_play_exit()");
+void onRunExit() {
+  Serial.println("onRunExit()");
 }
-void on_trans_play_play() {
-  Serial.println("on_trans_play_play()");
+void onRunRunTransition() {
+  Serial.println("onRunRunTransition()");
 }
 
 
-void on_stop_enter() {
-  Serial.println("on_stop_enter()");
+void onStopEnter() {
+  Serial.println("onStopEnter()");
   blinkLED();
 }
-void on_stop_exit() {
-  Serial.println("on_stop_exit()");
+void onStopExit() {
+  Serial.println("onStopExit()");
 }
-void on_trans_stop_play() {
-  Serial.println("on_trans_stop_play()");
+void onStopRunTransition() {
+  Serial.println("onStopRunTransition()");
 }
 
+int c = 0;
 void pulse() {
-  fsm.run_machine();
-  fsm.trigger(TICK);
+  seq.run_machine();
+  seq.trigger(TICK);
 }
 
 
@@ -84,9 +85,8 @@ void setup() {
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
-
-  fsm.add_transition(&state_stop, &state_play, PLAY, &on_trans_stop_play);
-  fsm.add_transition(&state_play, &state_play, TICK, &on_trans_play_play);
+  seq.add_transition(&stopped, &running, PLAY, &onStopRunTransition);
+  seq.add_transition(&running, &running, TICK, &onRunRunTransition);
 
   // tracks[0] = { 36, {
   //                     { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
