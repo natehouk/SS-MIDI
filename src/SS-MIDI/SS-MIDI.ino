@@ -21,18 +21,24 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 IntervalTimer clk;
 
 // Finite state machine
-enum Event { PLAY, PAUSE, STOP };
-enum Mode { RUNNING, PAUSED, STOPPED };
-State stopped(&onStopEnter, &onStopState, &onStopExit);
-State running(&onRunEnter, &onRunState, &onRunExit);
+enum Event { PLAY,
+             PAUSE,
+             STOP };
+enum Mode { STOPPED,
+            PAUSED,
+            RUNNING,
+};
+State stopped(&onStoppedEnter, &onStoppedState, &onStoppedExit);
+State paused(&onPausedEnter, &onPausedState, &onPausedExit);
+State running(&onRunningEnter, &onRunningState, &onRunningExit);
 Fsm sequencer(&stopped);
 
 const int ledPin = LED_BUILTIN;
 int ledState = LOW;
 
 // Use volatile for shared variables
-volatile unsigned long blinks = 0; 
-volatile unsigned int pulses = 0;
+volatile unsigned long blinks = 0;
+volatile unsigned int step = 0;
 
 byte bpm = 123;
 int measure = 0;
@@ -40,6 +46,8 @@ unsigned long previous = 0;
 
 struct track {
   byte note;
+  int channel;
+  byte pattern;
   bool patterns[PATTERNS][STEPS];
 };
 track tracks[ROWS];
@@ -50,38 +58,64 @@ void log(String message) {
   }
 }
 
-void onRunEnter() {
-  log("onRunEnter()");
+void onStoppedEnter() {
+  log("onStoppedEnter()");
 }
 
-void onRunState() {
-  log("onRunState()");
-  sendClock(RUNNING);
+void onStoppedExit() {
+  log("onStoppedExit()");
 }
 
-void onRunExit() {
-  log("onRunExit()");
-}
-
-void onRunRunTransition() {
-  log("onRunRunTransition()");
-}
-
-void onStopEnter() {
-  log("onStopEnter()");
-}
-
-void onStopExit() {
-  log("onStopExit()");
-}
-
-void onStopState() {
-  log("onStopState()");
+void onStoppedState() {
+  log("onStoppedState()");
   sendClock(STOPPED);
 }
 
-void onStopRunTransition() {
-  log("onStopRunTransition()");
+void onStoppedRunningTransition() {
+  log("onStoppedRunningTransition()");
+}
+
+void onPausedEnter() {
+  log("onPausedEnter()");
+}
+
+void onPausedState() {
+  log("onPausedState()");
+  sendClock(PAUSED);
+}
+
+void onPausedExit() {
+  log("onPausedExit()");
+}
+
+void onPausedStoppedTransition() {
+  log("onPausedStoppedTransition()");
+}
+
+void onPausedRunningTransition() {
+  log("onPausedRunningTransition()");
+}
+
+void onRunningStoppedTransition() {
+  log("onRunningStoppedTransition()");
+}
+
+void onRunningEnter() {
+  log("onRunningEnter()");
+}
+
+void onRunningState() {
+  log("onRunningState()");
+  sendClock(RUNNING);
+  playPattern();
+}
+
+void onRunningExit() {
+  log("onRunningExit()");
+}
+
+void onRunningPausedTransition() {
+  log("onRunningPausedTransition()");
 }
 
 void sendStart() {
@@ -90,18 +124,18 @@ void sendStart() {
 
 void sendClock(Mode mode) {
   log("sendClock()");
-  switch(mode) {
+  switch (mode) {
     case RUNNING:
-      pulses++;
-      if (pulses % PPQN == 0) {
-        pulses = 0;
+      step++;
+      if (step % PPQN == 0) {
+        step = 0;
         blinkLED();
       }
       break;
     case PAUSED:
       break;
     case STOPPED:
-      pulses = 0;
+      step = 0;
       break;
   }
   MIDI.sendClock();
@@ -120,7 +154,7 @@ void blinkLED() {
   // Blind LED
   if (ledState == LOW) {
     ledState = HIGH;
-    blinks++; // Increase when LED turns on
+    blinks++;  // Increase when LED turns on
   } else {
     ledState = LOW;
   }
@@ -136,13 +170,29 @@ void sendAllNotesOff() {
   }
 }
 
+void playPattern() {
+  for (byte track = 0; track < 8; track++) {
+    byte pattern = tracks[track].pattern;
+    int channel = tracks[track].channel;
+    if (tracks[track].patterns[pattern][step]) {
+      MIDI.sendNoteOn(tracks[track].note, ON, channel);
+    } else {
+      MIDI.sendNoteOff(tracks[track].note, OFF, channel);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("setup()");
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH);
-  sequencer.add_transition(&stopped, &running, PLAY, &onStopRunTransition);
+  sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
+  sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
+  sequencer.add_transition(&paused, &running, PLAY, &onPausedRunningTransition);
+  sequencer.add_transition(&running, &stopped, STOP, &onRunningStoppedTransition);
+  sequencer.add_transition(&running, &paused, PAUSE, &onRunningPausedTransition);
 
   // Listen to all incoming messages
   MIDI.begin(MIDI_CHANNEL_OMNI);
@@ -155,50 +205,50 @@ void setup() {
   MIDI.sendProgramChange(2, 2);
   MIDI.sendProgramChange(2, 3);
 
-  // Initialize patterns  
-  tracks[0] = { 36, {
+  // Initialize patterns
+  tracks[0] = { 36, 1, 1, {
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                     } };
-  tracks[1] = { 40, {
+  tracks[1] = { 40, 1, 1, {
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                     } };
-  tracks[2] = { 42, {
+  tracks[2] = { 42, 1, 1, {
                       { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
                       { 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1 },
                       { 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1 },
                       { 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1 },
                     } };
-  tracks[3] = { 51, {
+  tracks[3] = { 51, 1, 1, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0 },
                     } };
-  tracks[4] = { 37, {
+  tracks[4] = { 37, 1, 1, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[5] = { 38, {
+  tracks[5] = { 38, 1, 1, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[6] = { 75, {
+  tracks[6] = { 75, 1, 1, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     } };
-  tracks[7] = { 76, {
+  tracks[7] = { 76, 1, 1, {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
                       { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
