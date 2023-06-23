@@ -20,7 +20,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 IntervalTimer clk;
 
 // Finite state machine
-enum event { PLAY, TICK };
+enum event { PLAY, PAUSE, STOP, TICK };
 State stopped(&onStopEnter, &onStopState, &onStopExit);
 State running(&onRunEnter, &onRunState, &onRunExit);
 Fsm sequencer(&stopped);
