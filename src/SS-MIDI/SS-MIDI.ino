@@ -49,7 +49,6 @@ void onRunEnter() {
 
 void onRunState() {
   Serial.println("onRunState()");
-  blinkLED();
   sendClock();
 }
 
@@ -87,6 +86,7 @@ void sendClock() {
   pulses++;
   if (pulses % PPQN == 0) {
     pulses = 0;
+    blinkLED();
   }
   MIDI.sendClock();
 }
