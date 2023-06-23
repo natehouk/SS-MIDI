@@ -3,8 +3,6 @@
 #include <MIDI.h>
 #include <Fsm.h>
 
-#define PLAY 0
-#define TICK 1
 #define STEPS 16
 #define ROWS 8
 #define PATTERNS 4
@@ -22,6 +20,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 IntervalTimer clk;
 
 // Finite state machine
+enum event { PLAY, TICK };
 State stopped(&onStopEnter, &onStopState, &onStopExit);
 State running(&onRunEnter, &onRunState, &onRunExit);
 Fsm sequencer(&stopped);
