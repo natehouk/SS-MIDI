@@ -313,7 +313,7 @@ void setup() {
                 },
               };
 
-  // Start master clock
+  // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
 }
 
