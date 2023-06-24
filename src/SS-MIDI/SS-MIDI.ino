@@ -87,6 +87,7 @@ void onStoppedRunningTransition() {
 
 void onStoppedPanickedTransition() {
   log("onStoppedPanickedTransition()");
+  sendPanic();
 }
 
 void onPausedEnter() {
@@ -142,8 +143,8 @@ void onPanickedExit() {
 
 void onPanickedState() {
   log("onPanickedState()");
-  sendClock(STOPPED);
-  sendPanic();
+  sendClock(PANICKED);
+  sendAllNotesOff();
 }
 
 void onPanickedRunningTransition() {
