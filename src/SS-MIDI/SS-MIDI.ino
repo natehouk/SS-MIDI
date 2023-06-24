@@ -131,8 +131,8 @@ void sendClock(Mode mode) {
   debug("sendClock()");
   switch (mode) {
     case RUNNING:
-      pulse++;
-      if (pulse % PPQN == 0) {
+      step++;
+      if (step % PPQN == 0) {
         step = 0;
         blinkLED();
       }
@@ -182,15 +182,17 @@ void sendAllNotesOff() {
 }
 
 void playStep() {
-  for (byte track = 0; track < 1; track++) {
-    byte pattern = tracks[track].pattern;
-    int channel = tracks[track].channel;
-    if (tracks[track].patterns[pattern][step]) {
-      log("sendNoteOn()");
-      MIDI.sendNoteOn(tracks[track].note, ON, channel);
-    } else {
-      log("sendNoteOff()");
-      MIDI.sendNoteOff(tracks[track].note, OFF, channel);
+  if (step % 6 == 0) {
+    for (byte track = 0; track < 1; track++) {
+      byte pattern = tracks[track].pattern;
+      int channel = tracks[track].channel;
+      if (tracks[track].patterns[pattern][step]) {
+        log("sendNoteOn()");
+        MIDI.sendNoteOn(tracks[track].note, ON, channel);
+      } else {
+        log("sendNoteOff()");
+        MIDI.sendNoteOff(tracks[track].note, OFF, channel);
+      }
     }
   }
 }
