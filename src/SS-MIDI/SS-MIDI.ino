@@ -5,10 +5,12 @@
 
 #define DEBUG true
 #define STEPS 16
+
 #define ROWS 8
 #define PATTERNS 4
 #define BARS 4
 #define PHRASES 4
+
 #define ON 127
 #define OFF 0
 #define PPQN 24
@@ -41,18 +43,19 @@ const int ledPin = LED_BUILTIN;
 const int buttonPin = 7;
 int ledState = LOW;
 
+// Beats per minute
+byte bpm = 123;
+
 // Use volatile for shared variables
 volatile unsigned long blinks = 0;
-volatile unsigned int pulses = 0;
-volatile unsigned int step = 0;
+volatile unsigned long pulses = 0;
+volatile unsigned long bars = 0;
+volatile unsigned long step = 0;
 
-byte bpm = 123;
-int measure = 0;
-unsigned long previous = 0;
-
+// Track structure
 struct track {
   byte note;
-  int channel;
+  byte channel;
   byte pattern;
   bool patterns[PATTERNS][STEPS];
 };
@@ -152,6 +155,7 @@ void onPanickedRunningTransition() {
 }
 
 void sendStart() {
+  // Send MIDI start
   MIDI.sendStart();
 }
 
@@ -159,21 +163,41 @@ void sendClock(Mode mode) {
   debug("sendClock()");
   switch (mode) {
     case RUNNING:
+      // Increase pulse count
       pulses++;
+
+      // Every 24 pulses equals a 1/4 note
       if (pulses % PPQN == 0) {
         pulses = 0;
+      }
+      
+      // Every 12 pulses equals a 1/8 note
+      if (pulses % 12 == 0) {
+        // Blink at BPM tempo
         blinkLED();
+      }
+
+      // Every 6 pulses equals a 1/16 note or one step
+      if (pulses % 6 == 0) {
+        step++;
+        if (step % 16 == 0) {
+          step = 0;
+        }
       }
       break;
     case PAUSED:
       break;
     case STOPPED:
+      // Reset current step
       step = 0;
       break;
     case PANICKED:
+      // Reset current step
       step = 0;
       break;
   }
+
+  // Send MIDI clock
   MIDI.sendClock();
 }
 
@@ -225,21 +249,15 @@ void sendPanick() {
 }
 
 void playStep() {
-  if (pulses % 6 == 0) {
-    step++;
-    if (step % 16 == 0) {
-      step = 0;
-    }
-    for (byte track = 0; track < 1; track++) {
-      byte pattern = tracks[track].pattern;
-      int channel = tracks[track].channel;
-      if (tracks[track].patterns[pattern][step]) {
-        log("sendNoteOn()");
-        MIDI.sendNoteOn(tracks[track].note, ON, channel);
-      } else {
-        log("sendNoteOff()");
-        MIDI.sendNoteOff(tracks[track].note, OFF, channel);
-      }
+  for (byte track = 0; track < 1; track++) {
+    byte pattern = tracks[track].pattern;
+    int channel = tracks[track].channel;
+    if (tracks[track].patterns[pattern][step]) {
+      log("sendNoteOn()");
+      MIDI.sendNoteOn(tracks[track].note, ON, channel);
+    } else {
+      log("sendNoteOff()");
+      MIDI.sendNoteOff(tracks[track].note, OFF, channel);
     }
   }
 }
@@ -274,7 +292,7 @@ void setup() {
   MIDI.sendProgramChange(2, 3);
 
   // Initialize patterns
-  tracks[0] = { 36, 1, 0, {
+  tracks[0] = { 60, 1, 0, {
                       { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
