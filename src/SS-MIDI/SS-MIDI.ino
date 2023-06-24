@@ -260,6 +260,9 @@ void setup() {
   // Send all notes off
   sendAllNotesOff();
 
+  // Send panick
+  sendPanick();
+
   // Initialize synthesizers
   MIDI.sendProgramChange(2, 1);
   MIDI.sendProgramChange(2, 2);
