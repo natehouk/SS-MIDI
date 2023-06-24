@@ -160,7 +160,7 @@ void pulse() {
 }
 
 void blinkLED() {
-  log("blindLED()");
+  log("blinkLED()");
 
   // Blind LED
   if (ledState == LOW) {
