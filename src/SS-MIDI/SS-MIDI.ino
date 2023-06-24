@@ -36,8 +36,8 @@ State running(&onRunningEnter, &onRunningState, &onRunningExit);
 State panicked(&onPanickedEnter, &onPanickedState, &onPanickedExit);
 Fsm sequencer(&stopped);
 
+// LED
 const int ledPin = LED_BUILTIN;
-const int buttonPin = 7;
 int ledState = LOW;
 
 // Beats per minute
@@ -279,7 +279,6 @@ void setup() {
   Serial.println("setup()");
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
   digitalWrite(ledPin, HIGH);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
   sequencer.add_transition(&stopped, &panicked, PANIC, &onStoppedPanickedTransition);
