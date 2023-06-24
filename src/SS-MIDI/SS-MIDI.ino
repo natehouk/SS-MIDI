@@ -216,7 +216,7 @@ void pulse() {
 void blinkLED() {
   log("blinkLED()");
 
-  // Blind LED
+  // Blink LED
   if (ledState == LOW) {
     ledState = HIGH;
     blinks++;  // Increase when LED turns on
