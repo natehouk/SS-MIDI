@@ -24,6 +24,7 @@ IntervalTimer clk;
 enum Event { PLAY,
              PAUSE,
              STOP,
+             PANICK,
 };
 enum Mode { STOPPED,
             PAUSED,
@@ -83,6 +84,10 @@ void onStoppedRunningTransition() {
   log("onStoppedRunningTransition()");
 }
 
+void onStoppedPanickedTransition() {
+  log("onStoppedPanickedTransition()");
+}
+
 void onPausedEnter() {
   log("onPausedEnter()");
 }
@@ -124,6 +129,24 @@ void onRunningExit() {
 
 void onRunningPausedTransition() {
   log("onRunningPausedTransition()");
+}
+
+void onPanickedEnter() {
+  log("onPanickedEnter()");
+}
+
+void onPanickedExit() {
+  log("onPanickedExit()");
+}
+
+void onPanickedState() {
+  log("onPanickedState()");
+  sendClock(STOPPED);
+  sendAllNotesOff();
+}
+
+void onPanickedRunningTransition() {
+  log("onPanickedRunningTransition()");
 }
 
 void sendStart() {
@@ -208,10 +231,12 @@ void setup() {
   pinMode(buttonPin, INPUT);
   digitalWrite(ledPin, HIGH);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
+  sequencer.add_transition(&stopped, &panicked, PANICK, &onStoppedPanickedTransition);
   sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
   sequencer.add_transition(&paused, &running, PLAY, &onPausedRunningTransition);
   sequencer.add_transition(&running, &stopped, STOP, &onRunningStoppedTransition);
   sequencer.add_transition(&running, &paused, PAUSE, &onRunningPausedTransition);
+  sequencer.add_transition(&panicked, &running, PLAY, &onPanickedRunningTransition);
 
   // Listen to all incoming messages
   MIDI.begin(MIDI_CHANNEL_OMNI);
