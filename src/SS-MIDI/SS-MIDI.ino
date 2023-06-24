@@ -169,6 +169,9 @@ void sendClock(Mode mode) {
     case STOPPED:
       step = 0;
       break;
+    case PANICKED:
+      step = 0;
+      break;
   }
   MIDI.sendClock();
 }
