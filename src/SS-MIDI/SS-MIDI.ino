@@ -23,7 +23,7 @@ IntervalTimer clk;
 enum Event { PAUSE,
              STOP,
              PLAY,
-             PANICK,
+             PANIC,
 };
 enum Mode { STOPPED,
             PAUSED,
@@ -280,7 +280,7 @@ void setup() {
   pinMode(buttonPin, INPUT);
   digitalWrite(ledPin, HIGH);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
-  sequencer.add_transition(&stopped, &panicked, PANICK, &onStoppedPanickedTransition);
+  sequencer.add_transition(&stopped, &panicked, PANIC, &onStoppedPanickedTransition);
   sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
   sequencer.add_transition(&paused, &running, PLAY, &onPausedRunningTransition);
   sequencer.add_transition(&running, &stopped, STOP, &onRunningStoppedTransition);
