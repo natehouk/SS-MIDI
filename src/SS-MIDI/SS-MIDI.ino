@@ -215,7 +215,7 @@ void sendPanick() {
   log("sendPanick()");
 
   // Panick all notes off on all channels
-  for (int channel = 1; channel < 16; channel++) {
+  for (int channel = 1; channel <= 16; channel++) {
     for (int note = 0; note < 128; note++) {
       log("sendNoteOff()");
       MIDI.sendNoteOff(note, OFF, channel);
