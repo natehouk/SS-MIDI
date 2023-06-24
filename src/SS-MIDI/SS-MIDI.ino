@@ -12,7 +12,7 @@
 #define ON 127
 #define OFF 0
 #define PPQN 24
-#define ONE_SECOND 60000000
+#define ONE_MINUTE 60000000
 
 // Create and bind the MIDI interface to the default hardware Serial port
 MIDI_CREATE_DEFAULT_INSTANCE();
@@ -324,7 +324,7 @@ void setup() {
                     } };
 
   // Start master clock
-  clk.begin(pulse, ONE_SECOND / PPQN / bpm);
+  clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
 }
 
 void loop() {
