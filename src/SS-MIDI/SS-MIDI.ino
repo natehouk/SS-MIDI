@@ -322,4 +322,6 @@ void loop() {
   sequencer.trigger(PLAY);
   delay(55000);
   sequencer.trigger(STOP);
+  delay(5000);
+  sequencer.trigger(PANIC);
 }
