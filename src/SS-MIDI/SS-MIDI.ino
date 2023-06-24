@@ -143,7 +143,7 @@ void onPanickedExit() {
 void onPanickedState() {
   log("onPanickedState()");
   sendClock(STOPPED);
-  sendAllNotesOff();
+  sendPanick();
 }
 
 void onPanickedRunningTransition() {
@@ -208,6 +208,18 @@ void sendAllNotesOff() {
   // Send all notes off to all channels
   for (int i = 1; i <= 16; i++) {
     MIDI.sendControlChange(123, 0, i);
+  }
+}
+
+void sendPanick() {
+  log("sendPanick()");
+
+  // Panick all notes off on all channels
+  for (int channel = 1; channel < 16; channel++) {
+    for (int note = 0; note < 128; note++) {
+      log("sendNoteOff()");
+      MIDI.sendNoteOff(note, OFF, channel);
+    }
   }
 }
 
