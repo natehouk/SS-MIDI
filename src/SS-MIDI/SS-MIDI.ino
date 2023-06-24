@@ -173,12 +173,12 @@ void sendClock(Mode mode) {
 
         // Increase bar count
         bars++;
-        if (bars % 4) {
-
+        if (bars % 16 == 0) {
           // Change track
-          tracks[0].pattern++;
-          if (tracks[0].pattern % 4 == 0) {
-            tracks[0].pattern = 0;
+          sendAllNotesOff();
+          tracks[0].note += 12;
+          if (tracks[0].note > 100) {
+            tracks[0].note = 60;
           }
         }
       }
