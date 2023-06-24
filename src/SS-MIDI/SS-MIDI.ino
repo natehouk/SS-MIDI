@@ -3,7 +3,7 @@
 #include <MIDI.h>
 #include <Fsm.h>
 
-#define DEBUG false
+#define DEBUG true
 #define STEPS 16
 #define ROWS 8
 #define PATTERNS 4
@@ -57,6 +57,10 @@ void log(String message) {
   if (DEBUG) {
     Serial.println(message);
   }
+}
+
+void debug(String message) {
+  Serial.println(message);
 }
 
 void onStoppedEnter() {
@@ -124,7 +128,7 @@ void sendStart() {
 }
 
 void sendClock(Mode mode) {
-  log("sendClock()");
+  debug("sendClock()");
   switch (mode) {
     case RUNNING:
       step++;
@@ -148,11 +152,9 @@ void pulse() {
   if (!random(0, 10)) {
     log("Button pressed");
     sequencer.trigger(PLAY);
-  } else {
-    log("Button not pressed");
-    // Advance finite state machine
-    sequencer.run_machine();
   }
+  // Advance finite state machine
+  sequencer.run_machine();
 }
 
 void blinkLED() {
