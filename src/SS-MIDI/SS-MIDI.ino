@@ -168,7 +168,19 @@ void sendClock(Mode mode) {
 
       // Every 24 pulses equals a 1/4 note
       if (pulses % PPQN == 0) {
+        // Reset current pulse
         pulses = 0;
+
+        // Increase bar count
+        bars++;
+        if (bars % 4) {
+
+          // Change track
+          tracks[0].pattern++;
+          if (tracks[0].pattern % 4 == 0) {
+            tracks[0].pattern = 0;
+          }
+        }
       }
       
       // Every 12 pulses equals a 1/8 note
@@ -179,6 +191,7 @@ void sendClock(Mode mode) {
 
       // Every 6 pulses equals a 1/16 note or one step
       if (pulses % 6 == 0) {
+        // Increase current step
         step++;
         if (step % 16 == 0) {
           step = 0;
