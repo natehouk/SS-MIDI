@@ -58,8 +58,7 @@ volatile unsigned long step = 0;
 struct track {
   byte channel;
   byte pattern;
-  byte notes[PATTERNS][STEPS][VOICES];
-  bool patterns[PATTERNS][STEPS];
+  byte patterns[PATTERNS][STEPS][VOICES];
 };
 track tracks[ROWS];
 
@@ -262,22 +261,17 @@ void playStep() {
   for (byte track = 0; track < 1; track++) {
     byte pattern = tracks[track].pattern;
     int channel = tracks[track].channel;
-    if (tracks[track].patterns[pattern][step]) {
-      for (byte voice = 0; voice < 4; voice++) {
-        byte note = tracks[track].notes[pattern][step][voice];
-        if (voice == 0 || note != 0) {
-          log("sendNoteOn()");
-          MIDI.sendNoteOn(note, ON, channel);
-        }
+    for (byte voice = 0; voice < 4; voice++) {
+      byte previousStep = (step - 1) % 16;
+      byte previousNote = tracks[track].patterns[pattern][previousStep][voice];
+      byte note = tracks[track].patterns[pattern][step][voice];
+      if (note == OFF || previousNote != note) {
+        log("sendNoteOff()");
+        MIDI.sendNoteOff(previousNote, OFF, channel);
       }
-    }
-    else {
-      for (byte voice = 0; voice < 4; voice++) {
-        byte note = tracks[track].notes[pattern][step][voice];
-        if (note != 0) {
-          log("sendNoteOff()");
-          MIDI.sendNoteOff(note, OFF, channel);
-        }
+      if (note != OFF) {
+        log("sendNoteOn()");
+        MIDI.sendNoteOn(note, ON, channel);
       }
     }
   }
@@ -317,16 +311,10 @@ void setup() {
                 1,
                 {
                    { { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-                   { { 60, 0, 0, 0 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-                   { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
+                   { { 60, 72, 84, 96 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 84, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
+                   { { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
                    { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
                 },
-                {
-                  { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 },
-                  { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-                  { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
-                  { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
-                }
               };
 
   // Start master clock
