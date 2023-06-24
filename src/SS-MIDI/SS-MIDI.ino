@@ -7,12 +7,7 @@
 #define PATTERNS 4
 #define STEPS 16
 #define VOICES 4
-
-#define ROWS 8
-
-#define BARS 4
-#define PHRASES 4
-
+#define TRACKS 1
 #define ON 127
 #define OFF 0
 #define PPQN 24
@@ -60,7 +55,7 @@ struct track {
   byte pattern;
   byte patterns[PATTERNS][STEPS][VOICES];
 };
-track tracks[ROWS];
+track tracks[TRACKS];
 
 void log(String message) {
   if (DEBUG) {
