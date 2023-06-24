@@ -29,6 +29,7 @@ enum Event { PLAY,
 enum Mode { STOPPED,
             PAUSED,
             RUNNING,
+            PANICKED,
 };
 State stopped(&onStoppedEnter, &onStoppedState, &onStoppedExit);
 State paused(&onPausedEnter, &onPausedState, &onPausedExit);
