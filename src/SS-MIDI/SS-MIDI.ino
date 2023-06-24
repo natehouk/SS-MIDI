@@ -238,7 +238,7 @@ void sendAllNotesOff() {
 void sendPanic() {
   log("sendPanic()");
 
-  // Panick all notes off on all channels
+  // Panic all notes off on all channels
   for (int channel = 1; channel <= 16; channel++) {
     for (int note = 0; note <= 127; note++) {
       log("sendNoteOff()");
@@ -262,11 +262,11 @@ void playStep() {
       byte previousStep = (step - 1) % 16;
       byte previousNote = tracks[track].patterns[pattern][previousStep][voice];
       byte note = tracks[track].patterns[pattern][step][voice];
-      if (note == OFF || previousNote != note) {
+      if (note == OFF || note != previousNote) {
         log("sendNoteOff()");
         MIDI.sendNoteOff(previousNote, OFF, channel);
       }
-      if (note != OFF) {
+      if (note != OFF && note != previousNote) {
         log("sendNoteOn()");
         MIDI.sendNoteOn(note, ON, channel);
       }
@@ -279,7 +279,7 @@ void setup() {
   Serial.println("setup()");
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(ledPin, ledState);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
   sequencer.add_transition(&stopped, &panicked, PANIC, &onStoppedPanickedTransition);
   sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
@@ -305,7 +305,7 @@ void setup() {
                 1,
                 {
                    { { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-                   { { 60, 72, 84, 96 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 84, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
+                   { { 60, 72, 84, 96 }, { 48, 0, 0, 0 }, { 48, 72, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 72, 0, 0 }, { 72, 72, 0, 0 }, { 84, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
                    { { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
                    { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
                 },
