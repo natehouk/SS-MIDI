@@ -21,9 +21,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 IntervalTimer clk;
 
 // Finite state machine
-enum Event { PLAY,
-             PAUSE,
+enum Event { PAUSE,
              STOP,
+             PLAY,
              PANICK,
 };
 enum Mode { STOPPED,
@@ -43,6 +43,7 @@ int ledState = LOW;
 
 // Use volatile for shared variables
 volatile unsigned long blinks = 0;
+volatile unsigned int pulses = 0;
 volatile unsigned int step = 0;
 
 byte bpm = 123;
@@ -158,9 +159,9 @@ void sendClock(Mode mode) {
   debug("sendClock()");
   switch (mode) {
     case RUNNING:
-      step++;
-      if (step % PPQN == 0) {
-        step = 0;
+      pulses++;
+      if (pulses % PPQN == 0) {
+        pulses = 0;
         blinkLED();
       }
       break;
@@ -224,7 +225,11 @@ void sendPanick() {
 }
 
 void playStep() {
-  if (step % 6 == 0) {
+  if (pulses % 6 == 0) {
+    step++;
+    if (step % 16 == 0) {
+      step = 0;
+    }
     for (byte track = 0; track < 1; track++) {
       byte pattern = tracks[track].pattern;
       int channel = tracks[track].channel;
@@ -270,7 +275,7 @@ void setup() {
 
   // Initialize patterns
   tracks[0] = { 36, 1, 0, {
-                      { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
+                      { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0 },
                       { 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },
@@ -281,7 +286,7 @@ void setup() {
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                       { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
                     } };
-  tracks[2] = { 42, 3, 0, {
+  tracks[2] = { 42, 3, 0, { 
                       { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
                       { 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1 },
                       { 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1 },
@@ -325,6 +330,6 @@ void setup() {
 void loop() {
   delay(5000);
   sequencer.trigger(PLAY);
-  delay(5000);
+  delay(55000);
   sequencer.trigger(STOP);
 }
