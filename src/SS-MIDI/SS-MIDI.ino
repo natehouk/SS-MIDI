@@ -131,8 +131,8 @@ void sendClock(Mode mode) {
   debug("sendClock()");
   switch (mode) {
     case RUNNING:
-      step++;
-      if (step % PPQN == 0) {
+      pulse++;
+      if (pulse % PPQN == 0) {
         step = 0;
         blinkLED();
       }
@@ -149,10 +149,12 @@ void sendClock(Mode mode) {
 void pulse() {
   log("pulse()");
 
+  // Check conditions
   if (!random(0, 10)) {
     log("Button pressed");
     sequencer.trigger(PLAY);
   }
+
   // Advance finite state machine
   sequencer.run_machine();
 }
