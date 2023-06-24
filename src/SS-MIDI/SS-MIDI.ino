@@ -252,6 +252,13 @@ void sendPanic() {
   }
 }
 
+void sendInit() {
+  MIDI.sendProgramChange(2, 1);
+  MIDI.sendProgramChange(2, 2);
+  MIDI.sendProgramChange(2, 3);
+  delay(1000);
+}
+
 void playStep() {
   for (byte track = 0; track < 1; track++) {
     byte pattern = tracks[track].pattern;
@@ -297,10 +304,7 @@ void setup() {
   sendPanic();
 
   // Initialize synthesizers
-  MIDI.sendProgramChange(2, 1);
-  MIDI.sendProgramChange(2, 2);
-  MIDI.sendProgramChange(2, 3);
-  delay(1000);
+  sendInit();
 
   // Initialize tracks with patterns
   tracks[0] = { 1,
