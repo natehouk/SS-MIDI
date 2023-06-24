@@ -23,7 +23,8 @@ IntervalTimer clk;
 // Finite state machine
 enum Event { PLAY,
              PAUSE,
-             STOP };
+             STOP,
+};
 enum Mode { STOPPED,
             PAUSED,
             RUNNING,
@@ -31,6 +32,7 @@ enum Mode { STOPPED,
 State stopped(&onStoppedEnter, &onStoppedState, &onStoppedExit);
 State paused(&onPausedEnter, &onPausedState, &onPausedExit);
 State running(&onRunningEnter, &onRunningState, &onRunningExit);
+State panicked(&onPanickedEnter, &onPanickedState, &onPanickedExit);
 Fsm sequencer(&stopped);
 
 const int ledPin = LED_BUILTIN;
@@ -74,6 +76,7 @@ void onStoppedExit() {
 void onStoppedState() {
   log("onStoppedState()");
   sendClock(STOPPED);
+  sendAllNotesOff();
 }
 
 void onStoppedRunningTransition() {
@@ -149,11 +152,11 @@ void sendClock(Mode mode) {
 void pulse() {
   log("pulse()");
 
-  // Check conditions
-  if (!random(0, 10)) {
-    log("Button pressed");
-    sequencer.trigger(PLAY);
-  }
+  // // Check conditions
+  // if (!random(0, 10)) {
+  //   log("Button pressed");
+  //   sequencer.trigger(PLAY);
+  // }
 
   // Advance finite state machine
   sequencer.run_machine();
@@ -276,5 +279,8 @@ void setup() {
 }
 
 void loop() {
-
+  delay(5000);
+  sequencer.trigger(PLAY);
+  delay(5000);
+  sequencer.trigger(STOP);
 }
