@@ -143,7 +143,7 @@ void onPanickedExit() {
 void onPanickedState() {
   log("onPanickedState()");
   sendClock(STOPPED);
-  sendPanick();
+  sendPanic();
 }
 
 void onPanickedRunningTransition() {
@@ -240,8 +240,8 @@ void sendAllNotesOff() {
   }
 }
 
-void sendPanick() {
-  log("sendPanick()");
+void sendPanic() {
+  log("sendPanic()");
 
   // Panick all notes off on all channels
   for (int channel = 1; channel <= 16; channel++) {
@@ -293,13 +293,14 @@ void setup() {
   // Send all notes off
   sendAllNotesOff();
 
-  // Send panick
-  sendPanick();
+  // Send panic
+  sendPanic();
 
   // Initialize synthesizers
   MIDI.sendProgramChange(2, 1);
   MIDI.sendProgramChange(2, 2);
   MIDI.sendProgramChange(2, 3);
+  delay(1000);
 
   // Initialize patterns
   tracks[0] = { 1,
