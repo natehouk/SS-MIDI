@@ -2,6 +2,7 @@
 
 #include <MIDI.h>
 #include <Fsm.h>
+#include <vector>
 
 #define DEBUG true
 #define PATTERNS 4
@@ -36,6 +37,30 @@ State running(&onRunningEnter, &onRunningState, &onRunningExit);
 State panicked(&onPanickedEnter, &onPanickedState, &onPanickedExit);
 Fsm sequencer(&stopped);
 
+// MIDI Files
+const char *tuneList[] = {
+  "LOOPDEMO.MID",
+  "BANDIT.MID",
+  "ELISE.MID",
+  "TWINKLE.MID",
+  "GANGNAM.MID",
+  "FUGUEGM.MID",
+  "POPCORN.MID",
+  "AIR.MID",
+  "PRDANCER.MID",
+  "MINUET.MID",
+  "FIRERAIN.MID",
+  "MOZART.MID",
+  "FERNANDO.MID",
+  "SONATAC.MID",
+  "SKYFALL.MID",
+  "XMAS.MID",
+  "GBROWN.MID",
+  "PROWLER.MID",
+  "IPANEMA.mMID",
+  "JZBUMBLE.MID",
+};
+
 // LED
 const int ledPin = LED_BUILTIN;
 int ledState = LOW;
@@ -53,7 +78,7 @@ volatile unsigned long step = 0;
 struct track {
   byte channel;
   byte pattern;
-  byte patterns[PATTERNS][STEPS][VOICES];
+  byte notes[PATTERNS][STEPS][VOICES];
 };
 track tracks[TRACKS];
 
@@ -174,7 +199,7 @@ void sendClock(Mode mode) {
           // #TODO
         }
       }
-      
+
       // Every 12 pulses equals a 1/8 note
       if (pulses % 12 == 0) {
         // Blink at BPM tempo
@@ -255,13 +280,13 @@ void sendInit() {
 }
 
 void playStep() {
-  for (byte track = 0; track < 1; track++) {
+  for (byte track = 0; track < TRACKS; track++) {
     byte pattern = tracks[track].pattern;
     int channel = tracks[track].channel;
-    for (byte voice = 0; voice < 4; voice++) {
+    for (byte voice = 0; voice < VOICES; voice++) {
       byte previousStep = (step - 1) % 16;
-      byte previousNote = tracks[track].patterns[pattern][previousStep][voice];
-      byte note = tracks[track].patterns[pattern][step][voice];
+      byte previousNote = tracks[track].notes[pattern][previousStep][voice];
+      byte note = tracks[track].notes[pattern][step][voice];
       if (note == OFF || note != previousNote) {
         log("sendNoteOff()");
         MIDI.sendNoteOff(previousNote, OFF, channel);
@@ -301,15 +326,16 @@ void setup() {
   sendInit();
 
   // Initialize tracks with patterns
-  tracks[0] = { 1,
-                1,
-                {
-                   { { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-                   { { 60, 72, 84, 96 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 84, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-                   { { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-                   { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
-                },
-              };
+  tracks[0] = {
+    1,
+    1,
+    {
+      { { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
+      { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 } },
+      { { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+      { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
+    },
+  };
 
   // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
