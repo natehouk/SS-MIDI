@@ -1,8 +1,9 @@
 // Compatible with Teensy 4.1
 
 #include <MIDI.h>
+#include <Midier.h>
 #include <Fsm.h>
-#include <vector>
+#include <Vector.h>
 
 #define DEBUG true
 #define PATTERNS 4
@@ -81,6 +82,11 @@ struct track {
   byte notes[PATTERNS][STEPS][VOICES];
 };
 track tracks[TRACKS];
+
+// Initialize note vector
+const int ELEMENT_COUNT_MAX = 1024;
+midier::Note storage_array[ELEMENT_COUNT_MAX];
+Vector<midier::Note> _notes(storage_array);
 
 void log(String message) {
   if (DEBUG) {
@@ -279,21 +285,45 @@ void sendInit() {
   delay(1000);
 }
 
+void playNote(midier::Note note, bool on) {
+  // play the note
+  // midier::midi::play(note);
+  Serial.println(midier::midi::number(note, 2));
+  if (on) {
+    MIDI.sendNoteOn(midier::midi::number(note, 2), ON, 1);
+  } else {
+    MIDI.sendNoteOn(midier::midi::number(note, 2), OFF, 1);
+  }
+}
+midier::Note _previousNote;
+midier::Note _note;
+int test = 0;
 void playStep() {
   for (byte track = 0; track < TRACKS; track++) {
     byte pattern = tracks[track].pattern;
     int channel = tracks[track].channel;
     for (byte voice = 0; voice < VOICES; voice++) {
       byte previousStep = (step - 1) % 16;
-      byte previousNote = tracks[track].notes[pattern][previousStep][voice];
-      byte note = tracks[track].notes[pattern][step][voice];
+      byte previousNote = tracks[track].notes[pattern][previousStep][voice];  
+      byte note = tracks[track].notes[pattern][step][voice];      
+      if (test != 0) {
+        _notes.remove(0);
+        if (_notes.size() == 0) {
+          noteInit();
+        }
+      }
+      _previousNote = _note;
+      _note = _notes.front();
+      test++;
       if (note == OFF || note != previousNote) {
         log("sendNoteOff()");
-        MIDI.sendNoteOff(previousNote, OFF, channel);
+        // MIDI.sendNoteOff(previousNote, OFF, channel);
+        playNote(_previousNote, false);
       }
       if (note != OFF && note != previousNote) {
         log("sendNoteOn()");
-        MIDI.sendNoteOn(note, ON, channel);
+        // MIDI.sendNoteOn(note, ON, channel);
+        playNote(_note, true);
       }
     }
   }
@@ -337,8 +367,53 @@ void setup() {
     },
   };
 
+  // Initialize notes
+  noteInit();
+
   // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
+}
+
+void noteInit() {
+  const midier::Note notes[] = {
+    midier::Note::C,
+    midier::Note::D,
+    midier::Note::E,
+    midier::Note::F,
+    midier::Note::G,
+    midier::Note::A,
+    midier::Note::B,
+  };
+
+  // iterate over all the root notes
+  for (auto root : notes) {
+    // have a list of all seventh chord qualities
+    const midier::Quality qualities[] = {
+      midier::Quality::m7b5,
+      midier::Quality::m7,
+      midier::Quality::dom7,
+      midier::Quality::maj7,
+      midier::Quality::aug7,
+    };
+
+    // iterate over all the qualities
+    for (auto quality : qualities) {
+      // a list of all seventh chord degrees
+      const midier::Degree degrees[] = { 1, 3, 5, 7 };
+
+      // iterate over all the degrees
+      for (auto degree : degrees) {
+        // find out the interval to be added to the root note for this degree and quality
+        midier::Interval interval = midier::triad::interval(quality, degree);
+
+        // calculate the note of this degree
+        midier::Note note = root + interval;
+
+        // play the note
+        _notes.push_back(note);
+      }
+    }
+  }
 }
 
 void loop() {
