@@ -10,7 +10,7 @@
 #define STEPS 16
 #define VOICES 4
 #define TRACKS 1
-#define ON 127
+#define ON 100
 #define OFF 0
 #define PPQN 24
 #define ONE_MINUTE 60000000
@@ -79,7 +79,10 @@ volatile unsigned long step = 0;
 struct track {
   byte channel;
   byte pattern;
-  byte notes[PATTERNS][STEPS][VOICES];
+  byte octave;
+  midier::Quality quality;
+  midier::Note note;
+  String steps[PATTERNS];
 };
 track tracks[TRACKS];
 
@@ -109,7 +112,9 @@ void onStoppedExit() {
 void onStoppedState() {
   log("onStoppedState()");
   sendClock(STOPPED);
-  sendAllNotesOff();
+  for (byte channel = 0; channel < 16; channel++) {
+    sendAllNotesOff(channel);
+  }
 }
 
 void onStoppedRunningTransition() {
@@ -175,7 +180,9 @@ void onPanickedExit() {
 void onPanickedState() {
   log("onPanickedState()");
   sendClock(PANICKED);
-  sendAllNotesOff();
+  for (byte channel = 0; channel < 16; channel++) {
+    sendAllNotesOff(channel);
+  }
 }
 
 void onPanickedRunningTransition() {
@@ -189,6 +196,7 @@ void sendStart() {
 
 void sendClock(Mode mode) {
   debug("sendClock()");
+  noInterrupts();
   switch (mode) {
     case RUNNING:
       // Increase pulse count
@@ -202,7 +210,21 @@ void sendClock(Mode mode) {
         // Increase bar count
         bars++;
         if (bars % 16 == 0) {
-          // #TODO
+          tracks[0].octave = (tracks[0].octave + 1) % 6;
+        }
+        if (bars % 8 == 0) {
+          if (tracks[0].note == midier::Note::A) {
+            tracks[0].note = midier::Note::D;
+          } else {
+            tracks[0].note = midier::Note::A;
+          }
+        }
+        if (bars % 4 == 0) {
+          if (tracks[0].quality == midier::Quality::major) {
+            tracks[0].quality = midier::Quality::minor;
+          } else {
+            tracks[0].quality = midier::Quality::major;
+          }
         }
       }
 
@@ -235,6 +257,7 @@ void sendClock(Mode mode) {
 
   // Send MIDI clock
   MIDI.sendClock();
+  interrupts();
 }
 
 void pulse() {
@@ -257,13 +280,11 @@ void blinkLED() {
   digitalWrite(ledPin, ledState);
 }
 
-void sendAllNotesOff() {
+void sendAllNotesOff(byte channel) {
   log("sendAllNotesOff()");
 
-  // Send all notes off to all channels
-  for (int i = 1; i <= 16; i++) {
-    MIDI.sendControlChange(123, 0, i);
-  }
+  // Send all notes off
+  MIDI.sendControlChange(123, 0, channel);
 }
 
 void sendPanic() {
@@ -285,46 +306,67 @@ void sendInit() {
   delay(1000);
 }
 
-void playNote(midier::Note note, bool on) {
-  // play the note
-  // midier::midi::play(note);
-  Serial.println(midier::midi::number(note, 2));
-  if (on) {
-    MIDI.sendNoteOn(midier::midi::number(note, 2), ON, 1);
-  } else {
-    MIDI.sendNoteOn(midier::midi::number(note, 2), OFF, 1);
+void playChord(midier::Note root, midier::Quality quality, byte octave, byte channel) {
+  // a list of all seventh chord degrees
+  const midier::Degree degrees[] = { 1, 2, 6 };
+
+  // iterate over all the degrees
+  for (auto degree : degrees) {
+    // find out the interval to be added to the root note for this degree and quality
+    midier::Interval interval = midier::triad::interval(quality, degree);
+
+    // calculate the note of this degree
+    midier::Note note = root + interval;
+
+    // play the note
+    playNote(note, octave, channel);
   }
 }
-midier::Note _previousNote;
-midier::Note _note;
-int test = 0;
+
+void stopChord(midier::Note root, midier::Quality quality, byte octave, byte channel) {
+  // a list of all seventh chord degrees
+  const midier::Degree degrees[] = { 1, 3, 5 };
+
+  // iterate over all the degrees
+  for (auto degree : degrees) {
+    // find out the interval to be added to the root note for this degree and quality
+    midier::Interval interval = midier::triad::interval(quality, degree);
+
+    // calculate the note of this degree
+    midier::Note note = root + interval;
+
+    // play the note
+    stopNote(note, octave, channel);
+  }
+}
+
+void playNote(midier::Note note, byte octave, byte channel) {
+  Serial.println(midier::midi::number(note, octave));
+  MIDI.sendNoteOn(midier::midi::number(note, octave), ON, channel);
+}
+
+void stopNote(midier::Note note, byte octave, byte channel) {
+  Serial.println(midier::midi::number(note, octave));
+  MIDI.sendNoteOff(midier::midi::number(note, octave), OFF, channel);
+}
+
 void playStep() {
   for (byte track = 0; track < TRACKS; track++) {
-    byte pattern = tracks[track].pattern;
     int channel = tracks[track].channel;
-    for (byte voice = 0; voice < VOICES; voice++) {
-      byte previousStep = (step - 1) % 16;
-      byte previousNote = tracks[track].notes[pattern][previousStep][voice];  
-      byte note = tracks[track].notes[pattern][step][voice];      
-      if (test != 0) {
-        _notes.remove(0);
-        if (_notes.size() == 0) {
-          noteInit();
-        }
-      }
-      _previousNote = _note;
-      _note = _notes.front();
-      test++;
-      if (note == OFF || note != previousNote) {
-        log("sendNoteOff()");
-        // MIDI.sendNoteOff(previousNote, OFF, channel);
-        playNote(_previousNote, false);
-      }
-      if (note != OFF && note != previousNote) {
-        log("sendNoteOn()");
-        // MIDI.sendNoteOn(note, ON, channel);
-        playNote(_note, true);
-      }
+    byte pattern = tracks[track].pattern;
+    byte octave = tracks[track].octave;
+    midier::Quality quality = tracks[track].quality;
+    midier::Note note = tracks[track].note;
+    char active = tracks[track].steps[pattern][step];
+    char previous = tracks[track].steps[pattern][(step - 1) % 16];
+    Serial.println(active);
+    if (active == '*') {
+      log("playNote()");
+      playChord(note, quality, octave, channel);
+    } else {
+      log("stopNote()");
+      // stopChord(note, octave, channel);
+      sendAllNotesOff(channel);
     }
   }
 }
@@ -346,74 +388,34 @@ void setup() {
   // Listen to all incoming messages
   MIDI.begin(MIDI_CHANNEL_OMNI);
 
-  // Send all notes off
-  sendAllNotesOff();
+  // Send all notes off on all channels
+  for (byte channel = 0; channel < 16; channel++) {
+    sendAllNotesOff(channel);
+  }
 
   // Send panic
-  sendPanic();
+  // sendPanic();
 
   // Initialize synthesizers
-  sendInit();
+  // sendInit();
 
   // Initialize tracks with patterns
   tracks[0] = {
     1,
-    1,
+    2,
+    3,
+    midier::Quality::maj7,
+    midier::Note::A,
     {
-      { { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 } },
-      { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 48, 0, 0, 0 }, { 48, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 72, 0, 0, 0 }, { 72, 0, 0, 0 } },
-      { { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 60, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-      { { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 }, { 60, 0, 0, 0 } },
+      "*---*---*---*---",
+      "*-*-*-*-*-*-*-*-",
+      "****************",
+      "*---*---*---*---",
     },
   };
 
-  // Initialize notes
-  noteInit();
-
   // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
-}
-
-void noteInit() {
-  const midier::Note notes[] = {
-    midier::Note::C,
-    midier::Note::D,
-    midier::Note::E,
-    midier::Note::F,
-    midier::Note::G,
-    midier::Note::A,
-    midier::Note::B,
-  };
-
-  // iterate over all the root notes
-  for (auto root : notes) {
-    // have a list of all seventh chord qualities
-    const midier::Quality qualities[] = {
-      midier::Quality::m7b5,
-      midier::Quality::m7,
-      midier::Quality::dom7,
-      midier::Quality::maj7,
-      midier::Quality::aug7,
-    };
-
-    // iterate over all the qualities
-    for (auto quality : qualities) {
-      // a list of all seventh chord degrees
-      const midier::Degree degrees[] = { 1, 3, 5, 7 };
-
-      // iterate over all the degrees
-      for (auto degree : degrees) {
-        // find out the interval to be added to the root note for this degree and quality
-        midier::Interval interval = midier::triad::interval(quality, degree);
-
-        // calculate the note of this degree
-        midier::Note note = root + interval;
-
-        // play the note
-        _notes.push_back(note);
-      }
-    }
-  }
 }
 
 void loop() {
