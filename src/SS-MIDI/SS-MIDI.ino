@@ -212,13 +212,6 @@ void sendClock(Mode mode) {
         if (bars % 16 == 0) {
           tracks[0].octave = (tracks[0].octave + 1) % 6;
         }
-        if (bars % 8 == 0) {
-          if (tracks[0].note == midier::Note::A) {
-            tracks[0].note = midier::Note::D;
-          } else {
-            tracks[0].note = midier::Note::A;
-          }
-        }
         if (bars % 4 == 0) {
           if (tracks[0].quality == midier::Quality::major) {
             tracks[0].quality = midier::Quality::minor;
@@ -240,6 +233,15 @@ void sendClock(Mode mode) {
         step++;
         if (step % 16 == 0) {
           step = 0;
+        }
+        if (step % 2 == 0) {
+          if (tracks[0].note == midier::Note::C) {
+            tracks[0].note = midier::Note::D;
+          } else if (tracks[0].note == midier::Note::D) {
+            tracks[0].note = midier::Note::A;
+          } else {
+            tracks[0].note = midier::Note::C;
+          }
         }
       }
       break;
@@ -308,7 +310,7 @@ void sendInit() {
 
 void playChord(midier::Note root, midier::Quality quality, byte octave, byte channel) {
   // a list of all seventh chord degrees
-  const midier::Degree degrees[] = { 1, 2, 6 };
+  const midier::Degree degrees[] = { 1, 5 };
 
   // iterate over all the degrees
   for (auto degree : degrees) {
@@ -325,7 +327,7 @@ void playChord(midier::Note root, midier::Quality quality, byte octave, byte cha
 
 void stopChord(midier::Note root, midier::Quality quality, byte octave, byte channel) {
   // a list of all seventh chord degrees
-  const midier::Degree degrees[] = { 1, 3, 5 };
+  const midier::Degree degrees[] = { 1, 5 };
 
   // iterate over all the degrees
   for (auto degree : degrees) {
@@ -350,6 +352,7 @@ void stopNote(midier::Note note, byte octave, byte channel) {
   MIDI.sendNoteOff(midier::midi::number(note, octave), OFF, channel);
 }
 
+int sustain = 0;
 void playStep() {
   for (byte track = 0; track < TRACKS; track++) {
     int channel = tracks[track].channel;
@@ -360,8 +363,12 @@ void playStep() {
     char active = tracks[track].steps[pattern][step];
     char previous = tracks[track].steps[pattern][(step - 1) % 16];
     Serial.println(active);
-    if (active == '*') {
+    if (active == '*' && previous == '*') {
+      sustain++;
+    }
+    if (active == '*' && ((previous != '*' || (step == 0 && bars == 0)) || sustain >= 8)) {
       log("playNote()");
+      sustain = 0;
       playChord(note, quality, octave, channel);
     } else {
       log("stopNote()");
@@ -402,7 +409,7 @@ void setup() {
   // Initialize tracks with patterns
   tracks[0] = {
     1,
-    2,
+    1,
     3,
     midier::Quality::maj7,
     midier::Note::A,
