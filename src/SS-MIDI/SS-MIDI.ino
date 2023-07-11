@@ -15,6 +15,10 @@
 #define PPQN 24
 #define ONE_MINUTE 60000000
 
+const int debounceDelay = 10;  // iterations to wait until pin is stable
+bool lastPlayButtonState = LOW;  // Last state of the button
+int count;   // add this variable to store the number of presses
+
 // Create and bind the MIDI interface to the default hardware Serial port
 MIDI_CREATE_DEFAULT_INSTANCE();
 
@@ -32,6 +36,7 @@ enum Mode { STOPPED,
             RUNNING,
             PANICKED,
 };
+Mode mode = Mode::STOPPED;
 State stopped(&onStoppedEnter, &onStoppedState, &onStoppedExit);
 State paused(&onPausedEnter, &onPausedState, &onPausedExit);
 State running(&onRunningEnter, &onRunningState, &onRunningExit);
@@ -64,6 +69,8 @@ const char *tuneList[] = {
 
 // LED
 const int ledPin = LED_BUILTIN;
+const int runLedPin = 6;
+const int playButtonPin = 5;
 int ledState = LOW;
 
 // Beats per minute
@@ -111,7 +118,7 @@ void onStoppedExit() {
 
 void onStoppedState() {
   log("onStoppedState()");
-  sendClock(STOPPED);
+  sendClock();
   for (byte channel = 0; channel < 16; channel++) {
     sendAllNotesOff(channel);
   }
@@ -119,10 +126,12 @@ void onStoppedState() {
 
 void onStoppedRunningTransition() {
   log("onStoppedRunningTransition()");
+  mode = Mode::RUNNING;
 }
 
 void onStoppedPanickedTransition() {
   log("onStoppedPanickedTransition()");
+  mode = Mode::PANICKED;
   sendPanic();
 }
 
@@ -132,7 +141,7 @@ void onPausedEnter() {
 
 void onPausedState() {
   log("onPausedState()");
-  sendClock(PAUSED);
+  sendClock();
 }
 
 void onPausedExit() {
@@ -141,14 +150,17 @@ void onPausedExit() {
 
 void onPausedStoppedTransition() {
   log("onPausedStoppedTransition()");
+  mode = Mode::STOPPED;
 }
 
 void onPausedRunningTransition() {
   log("onPausedRunningTransition()");
+  mode = Mode::RUNNING;
 }
 
 void onRunningStoppedTransition() {
   log("onRunningStoppedTransition()");
+  mode = Mode::STOPPED;
 }
 
 void onRunningEnter() {
@@ -157,7 +169,7 @@ void onRunningEnter() {
 
 void onRunningState() {
   log("onRunningState()");
-  sendClock(RUNNING);
+  sendClock();
   playStep();
 }
 
@@ -167,6 +179,7 @@ void onRunningExit() {
 
 void onRunningPausedTransition() {
   log("onRunningPausedTransition()");
+  mode = Mode::PAUSED;
 }
 
 void onPanickedEnter() {
@@ -179,7 +192,7 @@ void onPanickedExit() {
 
 void onPanickedState() {
   log("onPanickedState()");
-  sendClock(PANICKED);
+  sendClock();
   for (byte channel = 0; channel < 16; channel++) {
     sendAllNotesOff(channel);
   }
@@ -187,6 +200,7 @@ void onPanickedState() {
 
 void onPanickedRunningTransition() {
   log("onPanickedRunningTransition()");
+  mode = Mode::RUNNING;
 }
 
 void sendStart() {
@@ -194,7 +208,7 @@ void sendStart() {
   MIDI.sendStart();
 }
 
-void sendClock(Mode mode) {
+void sendClock() {
   debug("sendClock()");
   noInterrupts();
   switch (mode) {
@@ -280,6 +294,7 @@ void blinkLED() {
     ledState = LOW;
   }
   digitalWrite(ledPin, ledState);
+  digitalWrite(runLedPin, ledState);
 }
 
 void sendAllNotesOff(byte channel) {
@@ -383,7 +398,10 @@ void setup() {
   Serial.println("setup()");
   randomSeed(analogRead(0));
   pinMode(ledPin, OUTPUT);
+  pinMode(runLedPin, OUTPUT);
+  pinMode(playButtonPin, INPUT_PULLUP);
   digitalWrite(ledPin, ledState);
+  digitalWrite(runLedPin, ledState);
   sequencer.add_transition(&stopped, &running, PLAY, &onStoppedRunningTransition);
   sequencer.add_transition(&stopped, &panicked, PANIC, &onStoppedPanickedTransition);
   sequencer.add_transition(&paused, &stopped, STOP, &onPausedStoppedTransition);
@@ -423,13 +441,62 @@ void setup() {
 
   // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
+
+  sequencer.trigger(STOP);
+}
+
+// debounce returns the state when the switch is stable
+bool debounce(int pin)
+{
+  bool state;
+  bool previousState;
+
+  previousState = digitalRead(pin);          // store switch state
+  for(int counter=0; counter < debounceDelay; counter++)
+  {
+      delay(1);                  // wait for 1 millisecond
+      state = digitalRead(pin);  // read the pin
+      if( state != previousState)
+      {
+         counter = 0; // reset the counter if the state changes
+         previousState = state;  // and save the current state
+      }
+  }
+  // here when the switch state has been stable longer than the debounce period
+  if(state == LOW)  // LOW means pressed (because pull-ups are used)
+     return true;
+  else
+    return false;
 }
 
 void loop() {
-  delay(5000);
-  sequencer.trigger(PLAY);
-  delay(55000);
-  sequencer.trigger(STOP);
-  delay(5000);
-  sequencer.trigger(PANIC);
+  bool playButtonState = debounce(playButtonPin);
+  if (playButtonState)
+  {
+      count++; // increment count
+      Serial.println(count);  // display the count on the Serial Monitor
+  }
+
+  // If the button state changed and the button was pressed
+  if (lastPlayButtonState != playButtonState && playButtonState == HIGH) {
+    switch (mode) {
+      case RUNNING:
+        sequencer.trigger(STOP);
+        mode = Mode::STOPPED;
+        break;
+      case PAUSED:
+        sequencer.trigger(STOP);
+        mode = Mode::STOPPED;
+        break;
+      case STOPPED:
+        sequencer.trigger(PANIC);
+        mode = Mode::PANICKED;
+        break;
+      case PANICKED:
+        sequencer.trigger(PLAY);
+        mode = Mode::RUNNING;
+        break;
+    }
+  }
+  lastPlayButtonState = playButtonState;
 }
