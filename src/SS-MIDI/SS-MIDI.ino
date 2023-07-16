@@ -547,19 +547,15 @@ void loop() {
     switch (mode) {
       case RUNNING:
         sequencer.trigger(STOP);
-        mode = Mode::STOPPED;
         break;
       case PAUSED:
         sequencer.trigger(STOP);
-        mode = Mode::STOPPED;
         break;
       case STOPPED:
         sequencer.trigger(PANIC);
-        mode = Mode::PANICKED;
         break;
       case PANICKED:
         sequencer.trigger(PLAY);
-        mode = Mode::RUNNING;
         break;
     }
   }
