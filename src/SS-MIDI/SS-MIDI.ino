@@ -505,6 +505,9 @@ void setup() {
 
   // Start master clock using timer interrupt
   clk.begin(pulse, ONE_MINUTE / PPQN / bpm);
+
+  // Transition to stopped state
+  sequencer.trigger(STOP);
 }
 
 // debounce returns the state when the switch is stable
